@@ -37,12 +37,17 @@ def execute_steps(
     steps = np.zeros((2, num_iter + 1))
     steps[:, 0] = np.array(initial_state)
     for i in range(1, num_iter + 1):
-        optimizer.zero_grad()
-        f = func(x)
-        f.backward(create_graph=True, retain_graph=True)
-        torch.nn.utils.clip_grad_norm_(x, 1.0)
-        optimizer.step()
-        steps[:, i] = x.detach().numpy()
+
+        ### reuse data for 3 times
+        for _ in range(3):
+            optimizer.zero_grad()
+            f = func(x)
+            f.backward(create_graph=True, retain_graph=True)
+            torch.nn.utils.clip_grad_norm_(x, 1.0)
+            optimizer.step()
+            steps[:, i] = x.detach().numpy()
+            # print('Iter: {}, x: {}, f: {}'.format(i, x.detach().numpy(), f.item()))
+
     return steps
 
 
@@ -93,7 +98,8 @@ def plot_rastrigin(grad_iter, optimizer_name, lr):
     )
     plt.plot(*minimum, 'gD')
     plt.plot(iter_x[-1], iter_y[-1], 'rD')
-    plt.savefig('docs/rastrigin_{}.png'.format(optimizer_name))
+    # plt.savefig('docs/rastrigin_{}.png'.format(optimizer_name))
+    plt.savefig('docs/rastrigin_reuse_data/rastrigin_{}.png'.format(optimizer_name))
 
 
 def plot_rosenbrok(grad_iter, optimizer_name, lr):
@@ -118,7 +124,8 @@ def plot_rosenbrok(grad_iter, optimizer_name, lr):
     )
     plt.plot(*minimum, 'gD')
     plt.plot(iter_x[-1], iter_y[-1], 'rD')
-    plt.savefig('docs/rosenbrock_{}.png'.format(optimizer_name))
+    # plt.savefig('docs/rosenbrock_{}.png'.format(optimizer_name))
+    plt.savefig('docs/rosenbrock_reuse_data/rosenbrock_{}.png'.format(optimizer_name))
 
 
 def execute_experiments(
@@ -131,6 +138,8 @@ def execute_experiments(
             'optimizer_class': hp.choice('optimizer_class', [optimizer_class]),
             'lr': hp.loguniform('lr', lr_low, lr_hi),
         }
+        print(f"space: {space}")
+
         best = fmin(
             fn=objective,
             space=space,
@@ -157,7 +166,7 @@ def LookaheadYogi(*a, **kw):
 
 
 if __name__ == '__main__':
-    # python examples/viz_optimizers.py
+    # import debugpy; debugpy.listen(5678); debugpy.wait_for_client()
 
     # Each optimizer has tweaked search space to produce better plots and
     # help to converge on better lr faster.
